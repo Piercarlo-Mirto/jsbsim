@@ -183,6 +183,7 @@ private:
   double Run(void);
   double SpinUp(void);
   double Start(void);
+  double Trim(void);
 
   void SetDefaults(void);
   bool Load(FGFDMExec *exec, Element *el);

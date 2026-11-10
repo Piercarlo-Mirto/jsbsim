@@ -242,8 +242,19 @@ void FGTurboProp::Calculate(void)
     StartTime=-1;
   }
 
-  // limiter intervention wanted?
-  if (Ielu_max_torque > 0.0) {
+  // limiter intervention wanted? Skipped during trim: the torque read back
+  // from the thruster reflects its last real (non-trim) time-marching state,
+  // most notably RPM==0 just after loading, which combined with Trim()'s
+  // idealized instantaneous power makes FGPropeller report a torque far
+  // beyond any real operating envelope (power / near-zero omega). Reacting
+  // to that would clamp ThrottlePos to OldThrottle on every trim evaluation
+  // -- including the first one, before OldThrottle has ever advanced -- so
+  // throttle would never be able to move away from 0 across the whole trim
+  // search. Trim's own power model (see Trim()) is already deliberately
+  // free of this kind of time-marching feedback, so the limiter is left
+  // untouched (OldThrottle included) for real-time operation to pick back
+  // up from where it left off once trim concludes.
+  if (Ielu_max_torque > 0.0 && phase != tpTrim) {
     double torque = 0.0;
 
     if (thrusterType == FGThruster::ttPropeller) {
@@ -273,6 +284,7 @@ void FGTurboProp::Calculate(void)
     case tpRun:    HP = Run(); break;
     case tpSpinUp: HP = SpinUp(); break;
     case tpStart:  HP = Start(); break;
+    case tpTrim:   HP = Trim(); break;
     default: HP = 0;
   }
 
@@ -338,6 +350,33 @@ double FGTurboProp::Run(void)
 
   if (Cutoff) phase = tpOff;
   if (Starved) phase = tpOff;
+
+  return EngPower_HP;
+}
+
+//%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+// Computes an instantaneous power response to throttle, bypassing the N1/ITT
+// spool-up lag, so that trim's root-finder sees a monotonic throttle->power
+// relationship instead of a time-marching one. Does not mutate persistent
+// engine state (N1, ITT, oil temperature), so repeated evaluations during the
+// trim search stay side-effect-free.
+//
+// A constant-speed propeller is governed to (approximately) its rated RPM
+// across the normal power range, so the governed RPM is used here rather
+// than the live RPM member: the live value is driven by FGPropeller's
+// torque/inertia integration, which starts at zero and has no time to settle
+// while integration is suspended for trim, and would otherwise make the
+// throttle->power relationship depend on unconverged transient state.
+
+double FGTurboProp::Trim(void)
+{
+  double N1_trim = IdleN1 + ThrottlePos * N1_factor;
+  double trimRPM = (thrusterType == FGThruster::ttPropeller) ?
+    ((FGPropeller*)Thruster)->GetMaxEngineRPM() : RPM;
+
+  double EngPower_HP = EnginePowerRPM_N1->GetValue(trimRPM, N1_trim);
+  EngPower_HP *= EnginePowerVC->GetValue();
+  if (EngPower_HP > MaxPower) EngPower_HP = MaxPower;
 
   return EngPower_HP;
 }

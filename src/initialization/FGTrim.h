@@ -94,6 +94,12 @@ CLASS DOCUMENTATION
     The remaining modes include <b>tCustom</b>, which is completely user defined and
     <b>tNone</b>.
 
+    During trim, integration is suspended (TotalDeltaT == 0), which engine models
+    use to enter a dedicated trim phase that computes an instantaneous power/thrust
+    response to throttle instead of their normal time-marching spool dynamics (see
+    e.g. FGTurbine::Trim() and FGTurboProp::Trim()). This is what allows the
+    tThrottle control to be used on any engine type, turboprops included.
+
     Note that trims can (and do) fail for reasons that are completely outside
     the control of the trimming routine itself. The most common problem is the
     initial conditions: is the model capable of steady state flight

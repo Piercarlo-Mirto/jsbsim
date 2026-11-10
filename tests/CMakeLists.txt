@@ -31,6 +31,7 @@ set(PYTHON_TESTS ResetOutputFiles
                  TestAeroFuncOutput
                  TestKinematic
                  TestTurboProp
+                 TestTurbopropTrim
                  TestEngineIndexedProps
                  TestExternalReactions
                  TestTurbine

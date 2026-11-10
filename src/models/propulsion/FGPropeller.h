@@ -262,6 +262,10 @@ public:
   /// Calculates the RPMs of the engine based on gear ratio
   double GetEngineRPM(void) const { return RPM * GearRatio;  }
 
+  /// Retrieves the propeller's configured maximum (governed) RPM, expressed
+  /// on the engine shaft (i.e. scaled by the gear ratio, like GetEngineRPM())
+  double GetMaxEngineRPM(void) const { return MaxRPM * GearRatio; }
+
   /// Retrieves the propeller moment of inertia
   double GetIxx(void) const       { return Ixx;           }
 
